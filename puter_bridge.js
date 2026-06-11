@@ -28,20 +28,23 @@ const inputImagePath = process.argv[6];
 
 async function generateImage() {
     try {
-        // --- NUEVO: Autenticación silenciosa ---
+        // Autenticación silenciosa
         if (fs.existsSync(tokenPath)) {
             const token = fs.readFileSync(tokenPath, 'utf8').trim();
-            if (token) {
-                puter.setAuthToken(token);
-            }
+            if (token) puter.setAuthToken(token);
         } else {
-            throw new Error("No se encontró el archivo puter_token.txt. Por favor, crea el archivo y pega tu token de Puter.com.");
+            throw new Error("No se encontró el archivo puter_token.txt.");
         }
-        // ----------------------------------------
 
         const options = {};
         if (model && model !== "default") options.model = model;
-        if (quality && quality !== "default") options.quality = quality;
+
+        // CORRECCIÓN 1: Evitar error con Gemini (no soporta parámetros de calidad)
+        if (quality && quality !== "default") {
+            if (!model.includes("gemini")) {
+                options.quality = quality;
+            }
+        }
 
         // Soporte para imagen de referencia (img2img)
         if (inputImagePath && inputImagePath !== "none" && fs.existsSync(inputImagePath)) {
@@ -53,7 +56,7 @@ async function generateImage() {
         // Llamada a la API de Puter
         const result = await puter.ai.txt2img(prompt, options);
 
-        // Procesar y guardar el buffer
+        // CORRECCIÓN 2: Soporte extendido para todos los formatos de respuesta posibles
         let imageBuffer;
         if (result instanceof Buffer) {
             imageBuffer = result;
@@ -61,8 +64,21 @@ async function generateImage() {
             imageBuffer = Buffer.from(result.raw);
         } else if (typeof result === 'string' && result.startsWith('data:image')) {
             imageBuffer = Buffer.from(result.split(',')[1], 'base64');
+        } else if (typeof Blob !== 'undefined' && result instanceof Blob) {
+            // Manejo de objetos Blob (frecuente en respuestas fetch modernas)
+            const arrayBuffer = await result.arrayBuffer();
+            imageBuffer = Buffer.from(arrayBuffer);
+        } else if (result.url) {
+            // Si la API devuelve una URL temporal, la descargamos sobre la marcha
+            const response = await fetch(result.url);
+            const arrayBuffer = await response.arrayBuffer();
+            imageBuffer = Buffer.from(arrayBuffer);
+        } else if (result.b64_json) {
+            imageBuffer = Buffer.from(result.b64_json, 'base64');
         } else {
-            throw new Error("Formato de imagen no reconocido devuelto por Puter.js");
+            // Si sigue sin coincidir, extraemos la estructura para saber qué está enviando
+            const errorData = typeof result === 'object' ? JSON.stringify(result) : String(result);
+            throw new Error(`Formato desconocido devuelto por Puter: ${errorData.substring(0, 200)}`);
         }
 
         fs.writeFileSync(outputPath, imageBuffer);
