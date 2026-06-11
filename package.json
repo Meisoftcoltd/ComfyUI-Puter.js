@@ -1,0 +1,8 @@
+{
+  "name": "comfyui-puter-js",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "@heyputer/puter.js": "^2.0.0"
+  }
+}
