@@ -1,7 +1,19 @@
-import { puter } from '@heyputer/puter.js';
 import fs from 'fs';
 
-// Capturar argumentos enviados desde Python
+// 1. Inyectamos el Polyfill de CustomEvent para Node.js 18
+if (typeof global.CustomEvent === 'undefined') {
+    global.CustomEvent = class CustomEvent extends Event {
+        constructor(event, params = {}) {
+            super(event, params);
+            this.detail = params.detail;
+        }
+    };
+}
+
+// 2. Importamos puter.js dinámicamente DESPUÉS de aplicar el polyfill
+const { puter } = await import('@heyputer/puter.js');
+
+// 3. Capturar argumentos enviados desde Python
 const prompt = process.argv[2];
 const model = process.argv[3];
 const quality = process.argv[4];
