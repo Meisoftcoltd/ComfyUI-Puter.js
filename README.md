@@ -6,6 +6,7 @@ A custom node for ComfyUI that integrates [Puter.js](https://puter.js.org/) AI i
 - **Text-to-Image**: Generate images from text prompts using various Puter.js models.
 - **Image-to-Image**: Use an existing image as an input reference.
 - **Auto-Installation**: Fully compatible with ComfyUI Manager for a plug-and-play setup.
+- **Gemini Support**: Soporte total y optimizado para los modelos Gemini (incluyendo conversiones automáticas de formato).
 
 ## Prerequisites
 
