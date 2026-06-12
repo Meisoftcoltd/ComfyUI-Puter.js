@@ -39,7 +39,7 @@ async function generateImage() {
         const options = {};
         if (model && model !== "default") options.model = model;
 
-        // CORRECCIÓN 1: Evitar error con Gemini (no soporta parámetros de calidad)
+        // Evitar error con Gemini (no soporta parámetros de calidad)
         if (quality && quality !== "default") {
             if (!model.includes("gemini")) {
                 options.quality = quality;
@@ -56,7 +56,7 @@ async function generateImage() {
         // Llamada a la API de Puter
         const result = await puter.ai.txt2img(prompt, options);
 
-        // CORRECCIÓN 2: Soporte extendido para todos los formatos de respuesta posibles
+        // Procesamiento robusto de todos los formatos posibles
         let imageBuffer;
         if (result instanceof Buffer) {
             imageBuffer = result;
@@ -64,19 +64,19 @@ async function generateImage() {
             imageBuffer = Buffer.from(result.raw);
         } else if (typeof result === 'string' && result.startsWith('data:image')) {
             imageBuffer = Buffer.from(result.split(',')[1], 'base64');
+        } else if (result.src && typeof result.src === 'string' && result.src.startsWith('data:image')) {
+            // NUEVO: Atrapa el formato { src: "data:image/jpeg;base64,..." } de Gemini
+            imageBuffer = Buffer.from(result.src.split(',')[1], 'base64');
         } else if (typeof Blob !== 'undefined' && result instanceof Blob) {
-            // Manejo de objetos Blob (frecuente en respuestas fetch modernas)
             const arrayBuffer = await result.arrayBuffer();
             imageBuffer = Buffer.from(arrayBuffer);
         } else if (result.url) {
-            // Si la API devuelve una URL temporal, la descargamos sobre la marcha
             const response = await fetch(result.url);
             const arrayBuffer = await response.arrayBuffer();
             imageBuffer = Buffer.from(arrayBuffer);
         } else if (result.b64_json) {
             imageBuffer = Buffer.from(result.b64_json, 'base64');
         } else {
-            // Si sigue sin coincidir, extraemos la estructura para saber qué está enviando
             const errorData = typeof result === 'object' ? JSON.stringify(result) : String(result);
             throw new Error(`Formato desconocido devuelto por Puter: ${errorData.substring(0, 200)}`);
         }
